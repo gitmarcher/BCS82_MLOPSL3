@@ -71,7 +71,7 @@ jobs:
         id: compare
         env:
           CURRENT_R2: ${{ needs.train.outputs.r2_score }}
-          BEST_R2: ${{ vars.BEST_R2_SCORE }}
+          BEST_R2: ${{ vars.BEST_R2 }}
           CURRENT_MSE: ${{ needs.train.outputs.mse }}
           BEST_MSE: ${{ vars.BEST_MSE }}
         run: |
@@ -123,12 +123,12 @@ jobs:
           CURRENT_R2: ${{ needs.train.outputs.r2_score }}
           CURRENT_MSE: ${{ needs.train.outputs.mse }}
         run: |
-          # Update BEST_R2_SCORE
+          # Update BEST_R2
           gh api \
             --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/actions/variables/BEST_R2_SCORE \
-            -f name='BEST_R2_SCORE' \
+            /repos/${{ github.repository }}/actions/variables/BEST_R2 \
+            -f name='BEST_R2' \
             -f value="$CURRENT_R2"
           
           # Update BEST_MSE
