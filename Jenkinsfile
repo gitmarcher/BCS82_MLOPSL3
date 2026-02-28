@@ -2,26 +2,91 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "gitmarcher/wine-quality-api"
-        DOCKER_CREDENTIALS = "docker-token"
+        IMAGE = "gitmarcher/wine-quality-api"
+        CONTAINER_NAME = "wine-quality-api"
+        PORT = "8000"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Pull Image') {
             steps {
-                git branch: 'main', url: 'https://github.com/gitmarcher/BCS82_MLOPSL4.git'
+                sh "docker pull $IMAGE"
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Run Container') {
             steps {
-                sh '''
-                python3 -m venv venv
-                . venv/bin/activate
-                pip install -r requirements.txt
-                '''
+                sh """
+                docker run -d -p $PORT:8000 --name $CONTAINER_NAME $IMAGE
+                """
             }
+        }
+
+        stage('Wait for Service Readiness') {
+            steps {
+                script {
+                    timeout(time: 1, unit: 'MINUTES') {
+                        waitUntil {
+                            def response = sh(
+                                script: "curl -s -o /dev/null -w '%{http_code}' http://host.docker.internal:$PORT/docs || true",
+                                returnStdout: true
+                            ).trim()
+                            return (response == "200")
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Valid Inference Test') {
+            steps {
+                script {
+                    def response = sh(
+                        script: "curl -s -X POST http://host.docker.internal:$PORT/predict -H 'Content-Type: application/json' -d @tests/valid_input.json",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Valid Response: ${response}"
+
+                    if (!response.contains("wine_quality")) {
+                        error("Prediction field missing!")
+                    }
+                }
+            }
+        }
+
+        stage('Invalid Inference Test') {
+            steps {
+                script {
+                    def response = sh(
+                        script: "curl -s -o /dev/null -w '%{http_code}' -X POST http://host.docker.internal:$PORT/predict -H 'Content-Type: application/json' -d @tests/invalid_input.json",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Invalid Request HTTP Code: ${response}"
+
+                    if (response == "200") {
+                        error("Invalid request did not fail!")
+                    }
+                }
+            }
+        }
+
+        stage('Stop Container') {
+            steps {
+                sh """
+                docker stop $CONTAINER_NAME || true
+                docker rm $CONTAINER_NAME || true
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            sh "docker stop $CONTAINER_NAME || true"
+            sh "docker rm $CONTAINER_NAME || true"
         }
     }
 }
