@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE = "gitmarcher/wine-quality-api"
-        CONTAINER_NAME = "wine-quality-api"
+        IMAGE = "gitmarcher/mlops_lab03"
+        CONTAINER_NAME = "mlops_lab03"
         PORT = "8000"
     }
 
