@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE = "gitmarcher/mlops_lab03"
+        IMAGE = "gitmarcher/mlops_lab03:v1"
         CONTAINER_NAME = "mlops_lab03"
         PORT = "8000"
     }
